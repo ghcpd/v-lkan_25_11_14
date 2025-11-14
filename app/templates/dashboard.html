@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            transition: all 0.3s ease;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            hover:shadow-lg transform hover:-translate-y-1;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+        }
+        
+        .table-row:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .modal-overlay {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .modal-content {
+            animation: slideUp 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .input-field {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 2px solid transparent;
+        }
+        
+        .input-field:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .error-banner {
+            animation: slideDown 0.4s ease;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .success-toast {
+            animation: slideUp 0.4s ease;
+        }
+        
+        .badge-admin { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .badge-manager { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .badge-user { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-purple-500 via-purple-600 to-pink-500">
+    <div id="errorBanner" class="hidden error-banner fixed top-0 left-0 right-0 z-50">
+        <div class="bg-red-500 text-white px-6 py-4 flex items-center justify-between shadow-lg">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-3"></i>
+                <span id="errorMessage"></span>
+            </div>
+            <button onclick="hideError()" class="text-white hover:text-gray-200">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="successToast" class="hidden success-toast fixed bottom-4 right-4 z-50 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg">
+        <i class="fas fa-check-circle mr-2"></i>
+        <span id="successMessage"></span>
+    </div>
+
+    <div class="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div class="glass-effect rounded-2xl shadow-2xl p-8 mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 class="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                            <i class="fas fa-users mr-3"></i>User Management Dashboard
+                        </h1>
+                        <p class="text-gray-600 mt-2">Manage, search, and organize your users with ease</p>
+                    </div>
+                    <div class="mt-4 sm:mt-0 flex gap-3">
+                        <button onclick="openAddUserModal()" class="btn-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl">
+                            <i class="fas fa-plus"></i> Add User
+                        </button>
+                        <div class="relative group">
+                            <button class="btn-secondary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl">
+                                <i class="fas fa-download"></i> Export
+                            </button>
+                            <div class="hidden group-hover:block absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-10">
+                                <button onclick="exportUsers('json')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-purple-50 flex items-center gap-2">
+                                    <i class="fas fa-file-json text-purple-600"></i> Export as JSON
+                                </button>
+                                <button onclick="exportUsers('csv')" class="w-full text-left px-4 py-3 text-gray-700 hover:bg-purple-50 border-t flex items-center gap-2">
+                                    <i class="fas fa-file-csv text-green-600"></i> Export as CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search and Filter -->
+            <div class="glass-effect rounded-2xl shadow-2xl p-6 mb-8">
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1">
+                        <div class="relative">
+                            <i class="fas fa-search absolute left-4 top-4 text-gray-400"></i>
+                            <input type="text" id="searchInput" placeholder="Search by name or email..." 
+                                class="w-full input-field pl-12 pr-4 py-3 rounded-lg font-medium focus:outline-none">
+                        </div>
+                    </div>
+                    <select id="sortBy" class="input-field px-4 py-3 rounded-lg font-medium focus:outline-none sm:w-40">
+                        <option value="id">Sort by ID</option>
+                        <option value="name">Sort by Name</option>
+                        <option value="email">Sort by Email</option>
+                        <option value="role">Sort by Role</option>
+                    </select>
+                    <select id="sortOrder" class="input-field px-4 py-3 rounded-lg font-medium focus:outline-none sm:w-32">
+                        <option value="asc">Ascending</option>
+                        <option value="desc">Descending</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="glass-effect rounded-2xl shadow-2xl overflow-hidden">
+                <div id="loadingSpinner" class="hidden flex items-center justify-center py-12">
+                    <div class="loading-spinner text-4xl text-purple-600">
+                        <i class="fas fa-spinner"></i>
+                    </div>
+                </div>
+                
+                <div id="tableContainer" class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                            <tr>
+                                <th class="px-6 py-4 text-left font-semibold">ID</th>
+                                <th class="px-6 py-4 text-left font-semibold">Name</th>
+                                <th class="px-6 py-4 text-left font-semibold">Email</th>
+                                <th class="px-6 py-4 text-left font-semibold">Role</th>
+                                <th class="px-6 py-4 text-center font-semibold">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="emptyState" class="hidden text-center py-16 px-6">
+                    <div class="text-5xl text-gray-300 mb-4">
+                        <i class="fas fa-inbox"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-400 mb-2">No users found</h3>
+                    <p class="text-gray-500">Try adjusting your search or add a new user</p>
+                </div>
+
+                <!-- Pagination -->
+                <div id="paginationContainer" class="hidden border-t border-gray-200 px-6 py-4 flex items-center justify-between bg-gray-50">
+                    <div class="text-sm text-gray-600">
+                        Showing <span id="pageInfo"></span>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="prevBtn" onclick="previousPage()" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium disabled:opacity-50">
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <div id="pageNumbers" class="flex gap-1">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                        <button id="nextBtn" onclick="nextPage()" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-300 font-medium disabled:opacity-50">
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit User Modal -->
+    <div id="userModal" class="hidden modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+        <div class="modal-content glass-effect rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="px-8 py-6 border-b border-gray-200 flex items-center justify-between">
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-800">Add New User</h2>
+                <button onclick="closeUserModal()" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+
+            <div class="px-8 py-6">
+                <form id="userForm" onsubmit="saveUser(event)">
+                    <input type="hidden" id="userId">
+                    
+                    <div class="mb-5">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-user text-purple-600 mr-2"></i>Full Name
+                        </label>
+                        <input type="text" id="userName" class="input-field w-full px-4 py-3 rounded-lg focus:outline-none" 
+                            placeholder="Enter user's full name" required>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-envelope text-purple-600 mr-2"></i>Email Address
+                        </label>
+                        <input type="email" id="userEmail" class="input-field w-full px-4 py-3 rounded-lg focus:outline-none" 
+                            placeholder="Enter email address" required>
+                    </div>
+
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-2">
+                            <i class="fas fa-shield text-purple-600 mr-2"></i>Role
+                        </label>
+                        <select id="userRole" class="input-field w-full px-4 py-3 rounded-lg focus:outline-none" required>
+                            <option value="">Select a role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Manager">Manager</option>
+                            <option value="User">User</option>
+                        </select>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <button type="submit" class="btn-primary text-white px-6 py-3 rounded-lg font-semibold flex-1 hover:shadow-lg">
+                            <i class="fas fa-save mr-2"></i> Save User
+                        </button>
+                        <button type="button" onclick="closeUserModal()" class="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold flex-1 hover:bg-gray-300">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div id="deleteModal" class="hidden modal-overlay fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40 p-4">
+        <div class="modal-content glass-effect rounded-2xl shadow-2xl w-full max-w-md">
+            <div class="px-8 py-6">
+                <div class="text-center mb-6">
+                    <div class="text-5xl text-red-500 mb-4">
+                        <i class="fas fa-trash-alt"></i>
+                    </div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Delete User?</h2>
+                    <p class="text-gray-600">This action cannot be undone. The user will be permanently removed.</p>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="confirmDelete()" class="btn-danger text-white px-6 py-3 rounded-lg font-semibold flex-1 hover:shadow-lg">
+                        <i class="fas fa-trash mr-2"></i> Delete
+                    </button>
+                    <button onclick="closeDeleteModal()" class="px-6 py-3 rounded-lg bg-gray-200 text-gray-700 font-semibold flex-1 hover:bg-gray-300">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
