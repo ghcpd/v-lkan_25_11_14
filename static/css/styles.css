@@ -1,0 +1,20 @@
+/* Custom CSS for minor visual tuning */
+:root{--glass: rgba(255,255,255,0.75)}
+
+body { font-family: Inter, system-ui, 'Segoe UI', Roboto, -apple-system, 'Helvetica Neue', Arial}
+
+/* Modal center and spacers */
+#modalBackdrop, #confirmBackdrop{ display: flex }
+
+/* Custom focus ring for inputs */
+input:focus, select:focus { outline: none; box-shadow: 0 0 0 4px rgba(99,102,241,0.06);}
+
+/* Smooth transitions for table hover */
+#userTable tr { transition: background-color .12s ease-in-out }
+
+/* Small utilities */
+.hidden { display: none !important }
+
+/* error banner animation */
+#errorBanner { transition: transform .18s ease, opacity .18s; }
+
