@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Management Dashboard</title>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        display: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        midnight: '#0f172a',
+                        accent: '#6366f1',
+                        accentLight: '#a5b4fc',
+                    },
+                },
+            },
+        };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" />
+</head>
+<body class="min-h-screen bg-slate-950 text-white font-display">
+    <div class="relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-violet-500/10 via-transparent to-sky-500/10 blur-3xl pointer-events-none"></div>
+        <div class="relative z-10 min-h-screen p-6 sm:p-10">
+            <header class="flex flex-col gap-6 mb-8">
+                <div class="flex flex-col gap-4">
+                    <div class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p class="text-sm uppercase tracking-[0.4em] text-slate-400">TeamOps</p>
+                            <h1 class="text-3xl sm:text-4xl font-semibold text-white">User Management Dashboard</h1>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-3">
+                            <button id="exportCsvBtn" class="btn-secondary">Export CSV</button>
+                            <button id="exportJsonBtn" class="btn-secondary">Export JSON</button>
+                            <button id="addUserBtn" class="btn-primary">Add User</button>
+                        </div>
+                    </div>
+                    <p class="text-slate-400 max-w-2xl">
+                        Elegant control center for your team. Search, sort, and manage every user with silky-smooth interactions and rich feedback.
+                    </p>
+                </div>
+                <div id="errorBanner" class="hidden rounded-2xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                    <div class="flex items-center justify-between gap-4">
+                        <span id="errorMessage">Something went wrong.</span>
+                        <button id="dismissError" class="text-xs font-semibold uppercase tracking-wide">Dismiss</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="space-y-6">
+                <section class="glass-card">
+                    <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div class="relative flex-1">
+                            <input
+                                id="searchInput"
+                                type="text"
+                                class="w-full rounded-2xl border border-white/5 bg-white/5 px-4 py-3 pl-11 text-sm text-white placeholder-white/50 focus:border-accent focus:ring-2 focus:ring-accent/40"
+                                placeholder="Search by name or email..."
+                            />
+                            <svg class="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-4.35-4.35m1.6-5.4a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-3 text-sm text-white/60">
+                            <span class="hidden sm:inline">Results per page</span>
+                            <select id="limitSelect" class="rounded-2xl border border-white/5 bg-white/5 px-4 py-2 text-sm focus:border-accent focus:ring-accent/40">
+                                <option value="5">5</option>
+                                <option value="8" selected>8</option>
+                                <option value="12">12</option>
+                                <option value="20">20</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead>
+                                <tr class="text-left text-xs uppercase tracking-wider text-white/60">
+                                    <th class="py-3 pr-6">
+                                        <button class="sort-btn" data-sort="name">Name</button>
+                                    </th>
+                                    <th class="py-3 pr-6">
+                                        <button class="sort-btn" data-sort="email">Email</button>
+                                    </th>
+                                    <th class="py-3 pr-6">
+                                        <button class="sort-btn" data-sort="role">Role</button>
+                                    </th>
+                                    <th class="py-3 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTable" class="divide-y divide-white/5 text-sm text-white/80"></tbody>
+                        </table>
+                        <div id="emptyState" class="hidden py-16 text-center text-white/60">
+                            <p class="text-lg font-semibold">No users found</p>
+                            <p class="text-sm text-white/50">Try adjusting your search or add a new teammate.</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 flex flex-col items-center gap-4 border-t border-white/5 pt-4 text-white/70 sm:flex-row sm:justify-between">
+                        <p id="paginationInfo"></p>
+                        <div class="flex items-center gap-2">
+                            <button id="prevPage" class="btn-secondary">Previous</button>
+                            <button id="nextPage" class="btn-secondary">Next</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="invisible fixed inset-0 z-30 flex items-center justify-center bg-slate-950/80 text-white">
+        <div class="flex flex-col items-center gap-3">
+            <div class="h-10 w-10 animate-spin rounded-full border-2 border-white/20 border-t-white"></div>
+            <p class="text-sm text-white/70">Syncing changes...</p>
+        </div>
+    </div>
+
+    <div id="userModal" class="modal" aria-hidden="true">
+        <div class="modal-panel">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.4em] text-white/40">User form</p>
+                    <h2 id="modalTitle" class="text-2xl font-semibold">Add user</h2>
+                </div>
+                <button class="close-btn" data-close-modal>&times;</button>
+            </div>
+
+            <form id="userForm" class="mt-6 space-y-4">
+                <input type="hidden" id="userId" />
+                <label class="form-field">
+                    <span>Name</span>
+                    <input id="nameInput" type="text" required placeholder="Jane Doe" />
+                </label>
+                <label class="form-field">
+                    <span>Email</span>
+                    <input id="emailInput" type="email" required placeholder="jane@team.com" />
+                </label>
+                <label class="form-field">
+                    <span>Role</span>
+                    <input id="roleInput" type="text" required placeholder="Product Manager" />
+                </label>
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <button class="btn-secondary" type="button" data-close-modal>Cancel</button>
+                    <button class="btn-primary" type="submit">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="confirmModal" class="modal" aria-hidden="true">
+        <div class="modal-panel max-w-md">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.4em] text-white/40">Confirm</p>
+                    <h2 class="text-2xl font-semibold">Delete user</h2>
+                </div>
+                <button class="close-btn" data-close-modal>&times;</button>
+            </div>
+            <p class="mt-4 text-white/70" id="confirmMessage">Are you sure you want to delete this user?</p>
+            <div class="mt-6 flex items-center justify-end gap-3">
+                <button class="btn-secondary" type="button" data-close-modal>Cancel</button>
+                <button id="confirmDelete" class="btn-danger" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>
