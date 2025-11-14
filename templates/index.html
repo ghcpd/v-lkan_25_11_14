@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: "Inter", system-ui, sans-serif;
+      background: radial-gradient(circle at top, rgba(99, 102, 241, 0.35), transparent 60%),
+        radial-gradient(circle at top right, rgba(236, 72, 153, 0.25), transparent 40%),
+        #0f172a;
+    }
+
+    .glass-card {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.6);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen text-slate-100">
+  <div class="relative isolate overflow-hidden">
+    <div class="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-950 opacity-90"></div>
+    <div class="relative max-w-6xl mx-auto px-4 py-12 space-y-10">
+      <header class="space-y-4">
+        <p class="text-sm uppercase tracking-[0.4em] text-fuchsia-300">Real-time Control</p>
+        <h1 class="text-3xl md:text-4xl font-semibold">User Management Dashboard</h1>
+        <p class="text-slate-300 max-w-2xl">
+          Monitor, edit, and export your team configuration. Responsive controls, rich feedback, and
+          graceful error handling keep the UI polished even when the backend reports issues.
+        </p>
+      </header>
+
+      <div id="errorBanner" class="hidden rounded-xl border border-rose-300/60 bg-rose-900/80 px-4 py-3 text-sm text-rose-200">
+        <span id="errorText"></span>
+        <button id="dismissError" class="text-rose-100 hover:text-white ml-4 underline">Dismiss</button>
+      </div>
+
+      <section class="grid gap-8 md:grid-cols-[1.4fr,1fr]">
+        <div class="glass-card rounded-3xl border border-white/5 p-6 space-y-6">
+          <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div class="flex-1">
+              <label class="text-xs uppercase tracking-[0.3em] text-slate-400">Search</label>
+              <input id="searchInput" type="text"
+                class="mt-2 w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-2 text-base text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition"
+                placeholder="Search by name or email" />
+            </div>
+            <div class="flex items-center gap-3">
+              <label class="text-xs uppercase tracking-[0.3em] text-slate-400">Display</label>
+              <select id="limitSelect"
+                class="rounded-2xl border border-white/10 bg-slate-800/70 px-3 py-2 text-sm text-white focus:border-fuchsia-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition">
+                <option value="5">5 / page</option>
+                <option value="10" selected>10 / page</option>
+                <option value="20">20 / page</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="text-slate-400">
+                <tr class="text-xs uppercase tracking-[0.3em]">
+                  <th class="py-3">
+                    <button data-sort="name" class="flex items-center gap-1">
+                      Name
+                      <span class="sort-indicator text-[10px]">↕</span>
+                    </button>
+                  </th>
+                  <th class="py-3">
+                    <button data-sort="email" class="flex items-center gap-1">
+                      Email
+                      <span class="sort-indicator text-[10px]">↕</span>
+                    </button>
+                  </th>
+                  <th class="py-3">
+                    <button data-sort="role" class="flex items-center gap-1">
+                      Role
+                      <span class="sort-indicator text-[10px]">↕</span>
+                    </button>
+                  </th>
+                  <th class="py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="usersBody" class="divide-y divide-white/5">
+                <!-- Content injected via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div class="flex items-center gap-2 text-xs uppercase tracking-[0.3em] text-slate-400">
+              <span id="pageInfo" class="text-white"></span>
+            </div>
+
+            <div class="flex gap-2">
+              <button id="prevPage"
+                class="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-fuchsia-400 hover:text-fuchsia-300 disabled:cursor-not-allowed disabled:opacity-40">
+                Prev
+              </button>
+              <button id="nextPage"
+                class="rounded-2xl border border-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:border-fuchsia-400 hover:text-fuchsia-300 disabled:cursor-not-allowed disabled:opacity-40">
+                Next
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-3xl border border-white/5 p-6 space-y-6">
+          <div class="space-y-2">
+            <p class="text-xs uppercase tracking-[0.3em] text-slate-400">User Form</p>
+            <h2 class="text-2xl font-semibold">Add or edit a team member</h2>
+          </div>
+          <form id="userForm" class="space-y-4">
+            <input type="hidden" id="editingId" />
+
+            <label class="block space-y-2">
+              <span class="text-sm font-semibold text-slate-300">Name</span>
+              <input id="nameInput" type="text"
+                class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-2 text-base text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition"
+                placeholder="e.g. Avery Miles" required />
+            </label>
+
+            <label class="block space-y-2">
+              <span class="text-sm font-semibold text-slate-300">Email</span>
+              <input id="emailInput" type="email"
+                class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-2 text-base text-white placeholder:text-slate-500 focus:border-fuchsia-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition"
+                placeholder="someone@example.com" required />
+            </label>
+
+            <label class="block space-y-2">
+              <span class="text-sm font-semibold text-slate-300">Role</span>
+              <select id="roleInput"
+                class="w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-2 text-base text-white focus:border-fuchsia-400 focus:outline-none focus:ring-2 focus:ring-fuchsia-500/50 transition">
+                <option>Administrator</option>
+                <option>Product Manager</option>
+                <option>Designer</option>
+                <option>Developer</option>
+                <option>Support</option>
+                <option>QA Engineer</option>
+              </select>
+            </label>
+
+            <div class="flex flex-wrap gap-2">
+              <button type="submit"
+                class="inline-flex items-center justify-center rounded-2xl border border-transparent bg-gradient-to-r from-fuchsia-500 to-orange-500 px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                <span id="formAction">Create user</span>
+              </button>
+              <button type="button" id="cancelEdit"
+                class="rounded-2xl border border-white/10 px-5 py-2 text-sm font-semibold text-white transition hover:border-fuchsia-400 hover:text-fuchsia-300">
+                Cancel
+              </button>
+            </div>
+
+            <div class="flex gap-3 text-xs uppercase tracking-[0.3em] text-slate-400">
+              <button type="button" data-export="csv"
+                class="flex-1 rounded-2xl border border-white/10 px-3 py-2 text-center text-white transition hover:border-fuchsia-400 hover:text-fuchsia-300">
+                Export CSV
+              </button>
+              <button type="button" data-export="json"
+                class="flex-1 rounded-2xl border border-white/10 px-3 py-2 text-center text-white transition hover:border-fuchsia-400 hover:text-fuchsia-300">
+                Export JSON
+              </button>
+            </div>
+          </form>
+        </div>
+      </section>
+    </div>
+
+    <div id="loadingState"
+      class="fixed inset-0 pointer-events-none flex items-center justify-center opacity-0 transition duration-300">
+      <div class="animate-pulse rounded-full border border-fuchsia-400/60 px-5 py-3 text-sm font-semibold text-fuchsia-200 shadow-2xl shadow-fuchsia-500/20">
+        Loading…
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      page: 1,
+      limit: 10,
+      sortBy: "name",
+      order: "asc",
+      search: "",
+      editingUserId: null,
+    };
+
+    const searchInput = document.getElementById("searchInput");
+    const limitSelect = document.getElementById("limitSelect");
+    const usersBody = document.getElementById("usersBody");
+    const pageInfo = document.getElementById("pageInfo");
+    const prevPageBtn = document.getElementById("prevPage");
+    const nextPageBtn = document.getElementById("nextPage");
+    const errorBanner = document.getElementById("errorBanner");
+    const errorText = document.getElementById("errorText");
+    const dismissError = document.getElementById("dismissError");
+    const loadingState = document.getElementById("loadingState");
+    const formAction = document.getElementById("formAction");
+    const userForm = document.getElementById("userForm");
+    const nameInput = document.getElementById("nameInput");
+    const emailInput = document.getElementById("emailInput");
+    const roleInput = document.getElementById("roleInput");
+    const editingId = document.getElementById("editingId");
+    const cancelEdit = document.getElementById("cancelEdit");
+
+    let searchTimer;
+
+    const showError = (message) => {
+      errorText.textContent = message;
+      errorBanner.classList.remove("hidden");
+    };
+
+    const clearError = () => {
+      errorBanner.classList.add("hidden");
+      errorText.textContent = "";
+    };
+
+    dismissError.addEventListener("click", () => {
+      clearError();
+    });
+
+    const setLoading = (isLoading) => {
+      loadingState.style.opacity = isLoading ? "1" : "0";
+    };
+
+    const applySortIndicator = () => {
+      document.querySelectorAll(".sort-indicator").forEach((indicator) => {
+        indicator.textContent = "↕";
+      });
+      const activeButton = document.querySelector(`[data-sort="${state.sortBy}"]`);
+      if (activeButton) {
+        const indicator = activeButton.querySelector(".sort-indicator");
+        indicator.textContent = state.order === "asc" ? "↑" : "↓";
+      }
+    };
+
+    const loadUsers = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: state.page,
+          limit: state.limit,
+          sort_by: state.sortBy,
+          order: state.order,
+          search: state.search,
+        });
+        const res = await fetch(`/api/users?${params.toString()}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Unable to load users");
+        }
+        const data = await res.json();
+        renderUsers(data.users);
+        pageInfo.textContent = `Page ${data.page} • ${data.total} user${data.total === 1 ? "" : "s"}`;
+        prevPageBtn.disabled = data.page <= 1;
+        nextPageBtn.disabled = data.page * data.limit >= Math.max(data.total, 1);
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+        applySortIndicator();
+      }
+    };
+
+    const renderUsers = (users) => {
+      if (!users.length) {
+        usersBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="px-6 py-8 text-center text-sm text-slate-500">
+              No users match your current filters.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      usersBody.innerHTML = users
+        .map(
+          (user) => `
+            <tr>
+              <td class="px-6 py-4 font-semibold text-white">${user.name}</td>
+              <td class="px-6 py-4 text-sm text-slate-300">${user.email}</td>
+              <td class="px-6 py-4 text-sm text-slate-300">${user.role}</td>
+              <td class="px-6 py-4 text-right text-sm text-slate-400">
+                <button data-edit="${user.id}" class="mr-2 rounded-full border border-slate-800 bg-slate-800/70 px-3 py-1 text-xs font-semibold text-white transition hover:border-fuchsia-400">
+                  Edit
+                </button>
+                <button data-delete="${user.id}" class="rounded-full border border-rose-500/40 px-3 py-1 text-xs font-semibold text-rose-200 transition hover:border-rose-400">
+                  Delete
+                </button>
+              </td>
+            </tr>
+          `
+        )
+        .join("");
+
+      document.querySelectorAll("[data-edit]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const userId = button.getAttribute("data-edit");
+          const row = users.find((item) => item.id === userId);
+          if (row) {
+            state.editingUserId = userId;
+            editingId.value = userId;
+            nameInput.value = row.name;
+            emailInput.value = row.email;
+            roleInput.value = row.role;
+            formAction.textContent = "Save changes";
+          }
+        });
+      });
+
+      document.querySelectorAll("[data-delete]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const userId = button.getAttribute("data-delete");
+          const confirmed = confirm("Delete this user? This action cannot be undone.");
+          if (!confirmed) return;
+          setLoading(true);
+          try {
+            const res = await fetch(`/api/users/${userId}`, { method: "DELETE" });
+            if (!res.ok) {
+              const body = await res.json().catch(() => ({}));
+              throw new Error(body.error || "Unable to delete user");
+            }
+            await loadUsers();
+          } catch (error) {
+            showError(error.message);
+          } finally {
+            setLoading(false);
+          }
+        });
+      });
+    };
+
+    userForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const payload = {
+        name: nameInput.value.trim(),
+        email: emailInput.value.trim(),
+        role: roleInput.value.trim(),
+      };
+      const method = state.editingUserId ? "PUT" : "POST";
+      const endpoint = state.editingUserId
+        ? `/api/users/${state.editingUserId}`
+        : "/api/users";
+      setLoading(true);
+      try {
+        const res = await fetch(endpoint, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Unable to save user");
+        }
+        await loadUsers();
+        userForm.reset();
+        state.editingUserId = null;
+        editingId.value = "";
+        formAction.textContent = "Create user";
+      } catch (error) {
+        showError(error.message);
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    cancelEdit.addEventListener("click", () => {
+      userForm.reset();
+      state.editingUserId = null;
+      editingId.value = "";
+      formAction.textContent = "Create user";
+      clearError();
+    });
+
+    document.querySelectorAll("[data-export]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        const format = button.getAttribute("data-export");
+        const params = new URLSearchParams({
+          format,
+          search: state.search,
+          sort_by: state.sortBy,
+          order: state.order,
+        });
+        try {
+          const res = await fetch(`/api/users/export?${params.toString()}`);
+          if (!res.ok) throw new Error("Failed to export");
+          const blob = await res.blob();
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `users.${format}`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(url);
+        } catch (error) {
+          showError(error.message);
+        }
+      });
+    });
+
+    searchInput.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        state.search = searchInput.value.trim();
+        state.page = 1;
+        loadUsers();
+      }, 300);
+    });
+
+    limitSelect.addEventListener("change", () => {
+      state.limit = Number(limitSelect.value);
+      state.page = 1;
+      loadUsers();
+    });
+
+    prevPageBtn.addEventListener("click", () => {
+      if (state.page <= 1) return;
+      state.page -= 1;
+      loadUsers();
+    });
+
+    nextPageBtn.addEventListener("click", () => {
+      state.page += 1;
+      loadUsers();
+    });
+
+    document.querySelectorAll("[data-sort]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const field = button.getAttribute("data-sort");
+        if (state.sortBy === field) {
+          state.order = state.order === "asc" ? "desc" : "asc";
+        } else {
+          state.sortBy = field;
+          state.order = "asc";
+        }
+        state.page = 1;
+        loadUsers();
+      });
+    });
+
+    applySortIndicator();
+    loadUsers();
+  </script>
+</body>
+
+</html>
